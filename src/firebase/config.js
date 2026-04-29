@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage'; // <--- Agregado para Publicidad
 
 // Mejorado: Las credenciales ahora se leen desde el sistema de forma segura
 const firebaseConfig = {
@@ -20,8 +21,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 export const db = getDatabase(app);
+export const storage = getStorage(app); // <--- Exportado para subir fotos
 
 // Mensaje de control en consola (solo para desarrollo)
 if (import.meta.env.DEV) {
-  console.log("🚀 Pana Voy: Firebase SDK Conectado");
+  console.log("🚀 Pana Voy: Firebase SDK Conectado (Auth, Database, Storage)");
 }
