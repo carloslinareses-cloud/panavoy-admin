@@ -5,6 +5,7 @@ import { ref, onValue } from 'firebase/database';
 import L from 'leaflet';
 import 'leaflet-rotatedmarker';
 import 'leaflet/dist/leaflet.css';
+import { MapPin } from 'lucide-react';
 
 const createDriverIcon = (status, bearing) => {
   let color = "#9ca3af"; // Offline
@@ -33,13 +34,14 @@ const createDriverIcon = (status, bearing) => {
   });
 };
 
-function AutoBounds({ drivers }) {
+function AutoBounds({ drivers = [] }) {
   const map = useMap();
   useEffect(() => {
-    if (drivers.length > 0) {
-      const onlineDrivers = drivers.filter(d => d.isOnline);
-      if (onlineDrivers.length > 0) {
-          const bounds = L.latLngBounds(onlineDrivers.map(d => [d.location.lat, d.location.lng]));
+    if ((drivers?.length || 0) > 0) {
+      const onlineDrivers = (drivers || []).filter(d => d.isOnline);
+      const valid = onlineDrivers.filter(d => d.location?.lat && d.location?.lng);
+      if (valid.length > 0) {
+          const bounds = L.latLngBounds(valid.map(d => [d.location.lat, d.location.lng]));
           map.fitBounds(bounds, { padding: [100, 100], maxZoom: 16 });
       }
     }
@@ -49,6 +51,7 @@ function AutoBounds({ drivers }) {
 
 export default function MapaFlota() {
   const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterOnline, setFilterOnline] = useState(true);
 
   useEffect(() => {
@@ -64,8 +67,13 @@ export default function MapaFlota() {
           }
           return { id, ...driver, currentStatus: status };
         }).filter(d => d.location?.lat && d.location?.lng);
-        
+
         setDrivers(processed);
+        setLoading(false);
+      }
+      else {
+        setDrivers([]);
+        setLoading(false);
       }
     });
     return () => unsub();
@@ -80,7 +88,7 @@ export default function MapaFlota() {
   };
 
   const filteredDrivers = useMemo(() => 
-    filterOnline ? drivers.filter(d => d.isOnline) : drivers
+    filterOnline ? (drivers || []).filter(d => d.isOnline) : (drivers || [])
   , [drivers, filterOnline]);
 
   return (
@@ -116,12 +124,20 @@ export default function MapaFlota() {
       </div>
 
       <div className="flex-1 rounded-3xl overflow-hidden border border-gray-700 shadow-2xl relative group">
-        <MapContainer 
-          center={[10.2447, -66.8623]} 
-          zoom={14} 
-          zoomControl={false}
-          style={{ height: 'calc(100vh - 250px)', width: '100%' }}
-        >
+        {loading ? (
+          <div className="flex items-center justify-center h-[calc(100vh-250px)] w-full">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+              <div className="text-sm text-gray-400 font-black uppercase">Cargando flota...</div>
+            </div>
+          </div>
+        ) : (
+          <MapContainer 
+            center={[10.2447, -66.8623]} 
+            zoom={14} 
+            zoomControl={false}
+            style={{ height: 'calc(100vh - 250px)', width: '100%' }}
+          >
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; OpenStreetMap'
@@ -129,7 +145,7 @@ export default function MapaFlota() {
           
           <AutoBounds drivers={filteredDrivers} />
 
-          {filteredDrivers.map((d) => (
+          {filteredDrivers?.filter(d => d.location?.lat && d.location?.lng).map((d) => (
             <Marker 
               key={d.id} 
               position={[d.location.lat, d.location.lng]} 
@@ -148,7 +164,7 @@ export default function MapaFlota() {
                     </div>
                     <div className="flex justify-between bg-gray-900 p-1.5 rounded">
                         <span className="text-gray-500 font-bold uppercase">Update</span>
-                        <span className="text-white font-mono">{timeSince(d.location.timestamp)}</span>
+                        <span className="text-white font-mono">{timeSince(d.location?.timestamp)}</span>
                     </div>
                     {d.currentStatus === 'online_busy' && (
                         <div className="bg-red-500/20 text-red-400 p-1 rounded text-center font-black animate-pulse uppercase">
@@ -161,6 +177,7 @@ export default function MapaFlota() {
             </Marker>
           ))}
         </MapContainer>
+        )}
 
         {/* INDICADOR DE CONTEO FLOTANTE */}
         <div className="absolute bottom-6 left-6 z-[400] bg-gray-900/80 backdrop-blur border border-gray-700 px-4 py-2 rounded-2xl">

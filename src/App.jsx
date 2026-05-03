@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Clientes from './pages/Clientes';
 import Socios from './pages/Socios';
 import Pedidos from './pages/Pedidos';
+import Liquidaciones from './pages/Liquidaciones';
 import Config from './pages/Config';
 import Login from './pages/Login';
 import MapaFlota from './pages/MapaFlota';
@@ -54,6 +55,7 @@ function AppRoutes() {
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/socios" element={<Socios />} />
             <Route path="/pedidos" element={<Pedidos />} />
+            <Route path="/liquidaciones" element={<Liquidaciones />} />
             <Route path="/mapa" element={<MapaFlota />} />
             <Route path="/publicidad" element={<Publicidad />} /> {/* <-- RUTA ACTIVADA */}
             <Route path="/config" element={<Config />} />

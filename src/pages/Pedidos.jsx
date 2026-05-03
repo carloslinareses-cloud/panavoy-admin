@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { db } from '../firebase/config';
 import { ref, onValue } from 'firebase/database';
-import { ShoppingBag, Clock, CheckCircle, Truck, User, Store, AlertCircle, Wallet, Banknote, CarFront } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle, Truck, User, Store, AlertCircle, Wallet, Banknote, CarFront, MapPin } from 'lucide-react';
 
 export default function Pedidos() {
   const [pedidosData, setPedidosData] = useState([]);

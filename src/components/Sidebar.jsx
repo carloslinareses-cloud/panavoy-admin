@@ -7,6 +7,7 @@ import {
   Users, 
   Store, 
   Package, 
+  Receipt,
   MapPin, 
   Megaphone, 
   Settings, 
@@ -23,6 +24,7 @@ const Sidebar = () => {
     { name: 'Clientes', path: '/clientes', icon: <Users size={20} /> },
     { name: 'Socios', path: '/socios', icon: <Store size={20} /> },
     { name: 'Pedidos', path: '/pedidos', icon: <Package size={20} /> },
+      { name: 'Liquidaciones', path: '/liquidaciones', icon: <Receipt size={20} /> },
     { name: 'Radar de Flota', path: '/mapa', icon: <MapPin size={20} /> },
     { name: 'Publicidad', path: '/publicidad', icon: <Megaphone size={20} /> }, // <-- NUEVO
     { name: 'Configuración', path: '/config', icon: <Settings size={20} /> },
