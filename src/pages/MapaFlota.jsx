@@ -57,6 +57,7 @@ export default function MapaFlota() {
   useEffect(() => {
     const driversRef = ref(db, 'socios/choferes');
     const unsub = onValue(driversRef, (snapshot) => {
+      console.debug('[MapaFlota] drivers snapshot:', snapshot.exists() ? snapshot.val() : null);
       if (snapshot.exists()) {
         const data = snapshot.val();
         const processed = Object.keys(data).map(id => {

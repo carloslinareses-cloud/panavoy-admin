@@ -66,7 +66,10 @@ export default function Pedidos() {
     switch (s) {
       case 'pending':
       case 'pendiente':
-        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+        return 'bg-[#FFFFCA28]/10 text-[#FFFFCA28] border-[#FFFFCA28]/20';
+      case 'cancelled':
+      case 'cancelado':
+        return 'bg-[#D32F2F]/10 text-[#D32F2F] border-[#D32F2F]/20';
       case 'on the way':
       case 'en_camino':
       case 'en camino':
@@ -74,7 +77,7 @@ export default function Pedidos() {
       case 'completed':
       case 'delivered':
       case 'entregado':
-        return 'bg-green-500/10 text-green-400 border-green-500/20';
+        return 'bg-[#118C4F]/10 text-[#118C4F] border-[#118C4F]/20';
       default:
         return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
@@ -87,8 +90,8 @@ export default function Pedidos() {
           <h2 className="text-4xl font-black text-white tracking-tight">Monitor de Operaciones</h2>
           <p className="text-gray-400 font-medium">Flujo transaccional en vivo (Delivery & Taxis)</p>
         </div>
-        <div className="bg-blue-600/10 border border-blue-500/20 p-5 rounded-2xl backdrop-blur-sm">
-          <p className="text-[10px] text-blue-400 uppercase font-black tracking-widest mb-1">Volumen Operativo</p>
+        <div className="bg-[#118C4F]/10 border border-[#118C4F]/20 p-5 rounded-2xl backdrop-blur-sm">
+          <p className="text-[10px] text-[#118C4F] uppercase font-black tracking-widest mb-1">Volumen Operativo</p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-3xl font-black text-white">${totalUsd.toFixed(2)}</h3>
             <span className="text-sm text-gray-500 font-bold">≈ {(totalUsd * tasaNum).toFixed(2)} Bs</span>
@@ -103,10 +106,10 @@ export default function Pedidos() {
           const montoBolivares = parseFloat(pedido.montoBS) || (montoTotal * tasaNum);
 
           return (
-            <div key={pedido.id} className="group bg-gray-800/50 border border-gray-700 p-5 rounded-2xl flex flex-wrap items-center justify-between gap-6 hover:border-blue-500/30 hover:bg-gray-800 transition-all">
+            <div key={pedido.id} className="group bg-gray-800/50 border border-gray-700 p-5 rounded-2xl flex flex-wrap items-center justify-between gap-6 hover:border-[#118C4F]/30 hover:bg-gray-800 transition-all">
               
               <div className="flex items-center gap-4 min-w-[200px]">
-                <div className={`p-4 rounded-xl group-hover:scale-110 transition-transform shadow-inner ${isTaxi ? 'bg-yellow-500/10 text-yellow-500' : 'bg-gray-900 text-blue-500'}`}>
+                <div className={`p-4 rounded-xl group-hover:scale-110 transition-transform shadow-inner ${isTaxi ? 'bg-[#FFFFCA28]/10 text-[#FFFFCA28]' : 'bg-gray-900 text-[#118C4F]'}`}>
                   {isTaxi ? <CarFront size={24} /> : <ShoppingBag size={24} />}
                 </div>
                 <div>
@@ -134,16 +137,15 @@ export default function Pedidos() {
                 <div className="flex items-center gap-2 bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-700/50">
                   <span className="text-xl font-black text-white">${montoTotal.toFixed(2)}</span>
                   <span className="text-gray-600 font-black">|</span>
-                  <span className="text-sm font-black text-blue-400">{montoBolivares.toFixed(2)} Bs</span>
+                  <span className="text-sm font-black text-[#118C4F]">{montoBolivares.toFixed(2)} Bs</span>
                 </div>
                 
-                {/* BADGE DE MÉTODO DE PAGO */}
                 {pedido.metodoPago === 'Efectivo' ? (
-                  <span className="bg-green-500/10 text-green-500 text-[9px] font-black px-2 py-1 rounded-lg border border-green-500/20 flex items-center gap-1 w-max shadow-sm mt-1 uppercase tracking-widest">
+                  <span className="bg-[#118C4F]/10 text-[#118C4F] text-[9px] font-black px-2 py-1 rounded-lg border border-[#118C4F]/20 flex items-center gap-1 w-max shadow-sm mt-1 uppercase tracking-widest">
                     <Banknote size={12}/> Pago en Efectivo
                   </span>
                 ) : (
-                  <span className="bg-blue-500/10 text-blue-400 text-[9px] font-black px-2 py-1 rounded-lg border border-blue-500/20 flex items-center gap-1 w-max shadow-sm mt-1 uppercase tracking-widest">
+                  <span className="bg-gray-800 text-gray-400 text-[9px] font-black px-2 py-1 rounded-lg border border-gray-700 flex items-center gap-1 w-max shadow-sm mt-1 uppercase tracking-widest">
                     <Wallet size={12}/> {pedido.metodoPago || 'Pago Digital'}
                   </span>
                 )}

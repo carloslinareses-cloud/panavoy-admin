@@ -2,11 +2,14 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { db } from '../firebase/config';
 import { ref, onValue } from 'firebase/database';
 import { Receipt, Clock, CheckCircle, Eye, X, AlertCircle, Store, Truck, Calendar, Image as ImageIcon } from 'lucide-react';
+import FormularioPagoMovil from '../components/FormularioPagoMovil';
+import { Plus } from 'lucide-react';
 
 export default function Liquidaciones() {
   const [pagos, setPagos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [comprobanteModal, setComprobanteModal] = useState(null);
+  const [showRegistrar, setShowRegistrar] = useState(false);
   const [filtro, setFiltro] = useState('all');
 
   useEffect(() => {
@@ -39,19 +42,20 @@ export default function Liquidaciones() {
         <div className="flex gap-4">
             <div className="bg-gray-800/50 border border-gray-700 p-5 rounded-2xl min-w-[160px]">
                 <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest flex items-center gap-2"><Clock size={12}/> Por Confirmar</p>
-                <p className="text-2xl font-black text-yellow-500 mt-1">${totalPendiente.toFixed(2)}</p>
+                <p className="text-2xl font-black text-[#FFFFCA28] mt-1">${totalPendiente.toFixed(2)}</p>
             </div>
-            <div className="bg-blue-600/10 border border-blue-500/20 p-5 rounded-2xl min-w-[160px]">
-                <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center gap-2"><CheckCircle size={12}/> Liquidado</p>
+            <div className="bg-[#118C4F]/10 border border-[#118C4F]/20 p-5 rounded-2xl min-w-[160px]">
+                <p className="text-[10px] text-[#118C4F] font-black uppercase tracking-widest flex items-center gap-2"><CheckCircle size={12}/> Liquidado</p>
                 <p className="text-2xl font-black text-white mt-1">${totalPagado.toFixed(2)}</p>
             </div>
         </div>
       </div>
 
       <div className="flex bg-gray-800 p-1 rounded-2xl border border-gray-700 w-max">
-        <button onClick={() => setFiltro('all')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filtro === 'all' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>Todos</button>
-        <button onClick={() => setFiltro('pending_confirmation')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filtro === 'pending_confirmation' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>Pendientes</button>
-        <button onClick={() => setFiltro('completed')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filtro === 'completed' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>Completados</button>
+        <button onClick={() => setFiltro('all')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filtro === 'all' ? 'bg-[#118C4F] text-white shadow-lg shadow-[#118C4F]/20' : 'text-gray-500 hover:text-white'}`}>Todos</button>
+        <button onClick={() => setFiltro('pending_confirmation')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filtro === 'pending_confirmation' ? 'bg-[#118C4F] text-white shadow-lg shadow-[#118C4F]/20' : 'text-gray-500 hover:text-white'}`}>Pendientes</button>
+        <button onClick={() => setFiltro('completed')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filtro === 'completed' ? 'bg-[#118C4F] text-white shadow-lg shadow-[#118C4F]/20' : 'text-gray-500 hover:text-white'}`}>Completados</button>
+        <button onClick={() => setShowRegistrar(true)} className="ml-4 px-4 py-2 rounded-xl bg-[#118C4F] text-white font-black flex items-center gap-2"><Plus size={14}/> Registrar Pago</button>
       </div>
 
       <div className="bg-gray-800 rounded-[2rem] border border-gray-700 overflow-hidden shadow-2xl">
@@ -68,24 +72,24 @@ export default function Liquidaciones() {
           </thead>
           <tbody className="divide-y divide-gray-700/50">
             {filtrados.map((pago) => (
-              <tr key={pago.id} className="hover:bg-blue-500/5 transition-colors group">
+              <tr key={pago.id} className="hover:bg-[#118C4F]/5 transition-colors group">
                 <td className="p-6">
                   <span className="font-black block uppercase tracking-tighter text-sm">#{pago.id.slice(-6)}</span>
                   <span className="text-[10px] text-gray-500 flex items-center gap-1 font-bold mt-1"><Calendar size={10}/> {formatearFecha(pago.timestamp)}</span>
                 </td>
-                <td className="p-6"><div className="flex items-center gap-2"><Store size={14} className="text-blue-500"/><span className="text-xs font-bold text-gray-300">{pago.storeId.slice(0, 12)}...</span></div></td>
-                <td className="p-6"><div className="flex items-center gap-2"><Truck size={14} className="text-green-500"/><span className="text-xs font-bold text-gray-300">{pago.choferId.slice(0, 12)}...</span></div></td>
+                <td className="p-6"><div className="flex items-center gap-2"><Store size={14} className="text-[#118C4F]"/><span className="text-xs font-bold text-gray-300">{pago.storeId.slice(0, 12)}...</span></div></td>
+                <td className="p-6"><div className="flex items-center gap-2"><Truck size={14} className="text-gray-400"/><span className="text-xs font-bold text-gray-300">{pago.choferId.slice(0, 12)}...</span></div></td>
                 <td className="p-6 text-right"><span className="text-xl font-black">${parseFloat(pago.monto).toFixed(2)}</span></td>
                 <td className="p-6 text-center">
                   {pago.status === 'completed' ? (
-                    <span className="bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1"><CheckCircle size={10}/> CONFIRMADO</span>
+                    <span className="bg-[#118C4F]/10 text-[#118C4F] border border-[#118C4F]/20 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1"><CheckCircle size={10}/> CONFIRMADO</span>
                   ) : (
-                    <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1 animate-pulse"><Clock size={10}/> ESPERANDO</span>
+                    <span className="bg-[#FFFFCA28]/10 text-[#FFFFCA28] border border-[#FFFFCA28]/20 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1 animate-pulse"><Clock size={10}/> ESPERANDO</span>
                   )}
                 </td>
                 <td className="p-6 text-center">
                   {pago.comprobanteUrl ? (
-                    <button onClick={() => setComprobanteModal(pago)} className="p-2 bg-gray-900 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-lg mx-auto block"><Eye size={18} /></button>
+                    <button onClick={() => setComprobanteModal(pago)} className="p-2 bg-gray-900 text-gray-400 hover:bg-[#118C4F] hover:text-white rounded-xl transition-all shadow-lg mx-auto block"><Eye size={18} /></button>
                   ) : (
                     <span className="text-[10px] text-gray-600 font-bold uppercase">Sin Capture</span>
                   )}
@@ -101,10 +105,10 @@ export default function Liquidaciones() {
 
       {comprobanteModal && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-in zoom-in-95 duration-300">
-          <div className="bg-gray-800 border border-gray-700 rounded-[2.5rem] max-w-md w-full overflow-hidden shadow-2xl flex flex-col border-t-blue-500 border-t-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-[2.5rem] max-w-md w-full overflow-hidden shadow-2xl flex flex-col border-t-[#118C4F] border-t-4">
             <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-xl text-blue-400"><ImageIcon size={20}/></div>
+                <div className="p-2 bg-[#118C4F]/20 rounded-xl text-[#118C4F]"><ImageIcon size={20}/></div>
                 <div><h3 className="text-sm font-black text-white uppercase tracking-widest">Comprobante de Pago</h3><p className="text-[10px] text-gray-500 font-mono">ID: #{comprobanteModal.id.slice(-8)}</p></div>
               </div>
               <button onClick={() => setComprobanteModal(null)} className="p-2 bg-gray-900 rounded-full text-gray-500 hover:text-white transition-all"><X size={20}/></button>
@@ -116,6 +120,17 @@ export default function Liquidaciones() {
                 <span className="text-xs font-black uppercase text-gray-500">Monto Transferido</span>
                 <span className="text-2xl font-black text-white">${parseFloat(comprobanteModal.monto).toFixed(2)}</span>
             </div>
+          </div>
+        </div>
+      )}
+      {showRegistrar && (
+        <div className="fixed inset-0 bg-black/70 z-[220] flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full p-6 bg-gray-900 rounded-2xl border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-black">Registrar Pago Móvil</h3>
+              <button onClick={() => setShowRegistrar(false)} className="text-gray-400">Cerrar</button>
+            </div>
+            <FormularioPagoMovil defaultStoreId={'admin_panel'} onSuccess={() => setShowRegistrar(false)} />
           </div>
         </div>
       )}

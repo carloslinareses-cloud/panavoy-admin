@@ -4,6 +4,7 @@ import {
   signInWithPopup,
   onAuthStateChanged,
   signOut as firebaseSignOut,
+  signInAnonymously,
 } from "firebase/auth";
 
 const AuthContext = createContext();
@@ -13,14 +14,30 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      // Usamos .toLowerCase() para evitar errores de mayúsculas
-      if (user && user.email.toLowerCase() === "carlos.linares.es@gmail.com") {
-        setCurrentUser(user);
-      } else {
-        setCurrentUser(null);
+    let triedAnonymous = false;
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (user) {
+          // Bloqueo estricto: Solo tú puedes pasar de esta línea
+          if (user.email && user.email.toLowerCase() === "carlos.linares.es@gmail.com") {
+            setCurrentUser(user);
+          } else {
+            setCurrentUser(null);
+          }
+        } else {
+          // Si no hay usuario, intentamos iniciar sesión anónima UNA vez
+          if (!triedAnonymous) {
+            triedAnonymous = true;
+            try {
+              await signInAnonymously(auth);
+            } catch (e) {
+              console.warn('Anonymous sign-in failed:', e);
+            }
+          }
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsub();
   }, []);
@@ -31,9 +48,10 @@ export function AuthProvider({ children }) {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
+      // Expulsión inmediata si el correo no es el tuyo
       if (user.email.toLowerCase() !== "carlos.linares.es@gmail.com") {
         await firebaseSignOut(auth);
-        alert("Acceso denegado: " + user.email + " no está autorizado.");
+        alert("Acceso denegado: " + user.email + " no está autorizado en esta plataforma.");
         return null;
       }
       

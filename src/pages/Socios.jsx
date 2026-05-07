@@ -6,17 +6,16 @@ import {
   Store, Truck, Check, X, Eye, ShieldCheck, 
   AlertCircle, Users, Camera, FileText, MessageSquare,
   RotateCw, ZoomIn, ZoomOut, BellRing, Zap, 
-  ShieldAlert, Phone, MapPin, Star, Circle, CarFront // <-- NUEVO ICONO: CarFront
+  ShieldAlert, Phone, MapPin, Star, Circle, CarFront
 } from 'lucide-react';
 
 export default function Socios() {
   const { currentUser } = useAuth();
-  // MEJORA: Agregado el array de 'taxis' al estado inicial
   const [socios, setSocios] = useState({ tiendas: [], choferes: [], taxis: [] });
   const [sosAlerts, setSosAlerts] = useState([]); 
   const [modalData, setModalData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false); // <-- NUEVO: Estado de carga para los botones
+  const [isUpdating, setIsUpdating] = useState(false);
   const [motivoRechazo, setMotivoRechazo] = useState('');
   const [filtro, setFiltro] = useState('pending');
   
@@ -26,28 +25,59 @@ export default function Socios() {
   const isAdmin = currentUser?.email === 'carlos.linares.es@gmail.com';
 
   useEffect(() => {
-    // 1. LISTENER DE SOCIOS GENERAL (Auditoría: Tiendas, Choferes, Taxis)
-    const sociosRef = ref(db, 'socios');
-    const unsubSocios = onValue(sociosRef, (snapshot) => {
+    // 1. LISTENERS POR SUBRUTA (evita leer /socios entero si las reglas no permiten lectura en el padre)
+    const tiendasRef = ref(db, 'socios/tiendas');
+    const choferesRef = ref(db, 'socios/choferes');
+    const taxisRef = ref(db, 'socios/taxis');
+
+    let tiendasLoaded = false;
+    let choferesLoaded = false;
+    let taxisLoaded = false;
+
+    const unsubTiendas = onValue(tiendasRef, (snapshot) => {
+      console.debug('[Socios] tiendas snapshot:', snapshot.exists() ? snapshot.val() : null);
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const tiendas = data?.tiendas ? Object.keys(data.tiendas).map(id => ({ id, type: 'tienda', ...data.tiendas[id] })) : [];
-        const choferes = data?.choferes ? Object.keys(data.choferes).map(id => ({ id, type: 'chofer', ...data.choferes[id] })) : [];
-        // MEJORA: Lectura segura del nuevo nodo de Taxis
-        const taxis = data?.taxis ? Object.keys(data.taxis).map(id => ({ id, type: 'taxi', ...data.taxis[id] })) : [];
-        
-        setSocios({ tiendas, choferes, taxis });
+        const tiendas = Object.keys(data).map(id => ({ id, type: 'tienda', ...data[id] }));
+        setSocios(prev => ({ ...prev, tiendas }));
       } else {
-        setSocios({ tiendas: [], choferes: [], taxis: [] });
+        setSocios(prev => ({ ...prev, tiendas: [] }));
       }
-      setLoading(false);
+      tiendasLoaded = true;
+      if (tiendasLoaded && choferesLoaded && taxisLoaded) setLoading(false);
     });
 
-    // 2. LISTENER DE EMERGENCIAS SOS (Mantenido intacto)
-    const sosQuery = query(ref(db, 'socios/choferes'), orderByChild('needsSupport'), equalTo(true));
-    const unsubSos = onValue(sosQuery, (snapshot) => {
+    const unsubChoferes = onValue(choferesRef, (snapshot) => {
+      console.debug('[Socios] choferes snapshot:', snapshot.exists() ? snapshot.val() : null);
       if (snapshot.exists()) {
         const data = snapshot.val();
+        const choferes = Object.keys(data).map(id => ({ id, type: 'chofer', ...data[id] }));
+        setSocios(prev => ({ ...prev, choferes }));
+      } else {
+        setSocios(prev => ({ ...prev, choferes: [] }));
+      }
+      choferesLoaded = true;
+      if (tiendasLoaded && choferesLoaded && taxisLoaded) setLoading(false);
+    });
+
+    const unsubTaxis = onValue(taxisRef, (snapshot) => {
+      console.debug('[Socios] taxis snapshot:', snapshot.exists() ? snapshot.val() : null);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const taxis = Object.keys(data).map(id => ({ id, type: 'taxi', ...data[id] }));
+        setSocios(prev => ({ ...prev, taxis }));
+      } else {
+        setSocios(prev => ({ ...prev, taxis: [] }));
+      }
+      taxisLoaded = true;
+      if (tiendasLoaded && choferesLoaded && taxisLoaded) setLoading(false);
+    });
+
+    // 2. LISTENER DE EMERGENCIAS SOS
+    const sosQuery = query(ref(db, 'socios/choferes'), orderByChild('needsSupport'), equalTo(true));
+    const unsubSos = onValue(sosQuery, (snapshot) => {
+      console.debug('[Socios] SOS query snapshot:', snapshot.exists() ? snapshot.val() : null);
+      if (snapshot.exists()) {
         if (data && typeof data === 'object') {
           setSosAlerts(Object.keys(data).map(id => ({ id, ...data[id] })));
         } else {
@@ -59,12 +89,13 @@ export default function Socios() {
     });
 
     return () => {
-      if (typeof unsubSocios === 'function') unsubSocios();
+      if (typeof unsubTiendas === 'function') unsubTiendas();
+      if (typeof unsubChoferes === 'function') unsubChoferes();
+      if (typeof unsubTaxis === 'function') unsubTaxis();
       if (typeof unsubSos === 'function') unsubSos();
     };
   }, []);
 
-  // --- LÓGICA DE SOPORTE SOS ---
   const resolverSOS = async (choferId) => {
     if (!isAdmin) return;
     try {
@@ -74,16 +105,13 @@ export default function Socios() {
     }
   };
 
-  // --- RANKING DE CHOFERES ---
   const rankingChoferes = useMemo(() => {
     const list = Array.isArray(socios?.choferes) ? socios.choferes : [];
     return [...list].sort((a, b) => (parseFloat(b?.ratingTotal) || 0) - (parseFloat(a?.ratingTotal) || 0));
   }, [socios?.choferes]);
 
-  // MEJORA: Lógica de Decisión con Loading State y Toasts nativos
   const handleDecision = async (id, type, decision) => {
     setIsUpdating(true);
-    // Magia pura: type='taxi' + 's' = 'taxis', coincide exacto con Firebase
     const path = `socios/${type}s/${id}`;
     const updates = { status: decision };
     
@@ -113,10 +141,16 @@ export default function Socios() {
     setMotivoRechazo('');
   };
 
+  // 🔥 MEJORA: Función ultra-robusta para detectar si un socio está pendiente
+  const esPendiente = (status) => {
+    if (!status) return true; // Si la app móvil no guardó el status, por lógica es nuevo/pendiente
+    const s = String(status).toLowerCase().trim();
+    return s === 'pending' || s === 'pendiente' || s === '';
+  };
+
   const renderSocioCard = (socio) => (
     <div key={socio?.id} className="bg-gray-800 border border-gray-700 rounded-2xl p-5 flex flex-col justify-between hover:border-blue-500/50 hover:shadow-2xl transition-all group animate-in fade-in">
       <div className="flex justify-between items-start mb-4">
-        {/* MEJORA: Color e ícono dinámico para el Taxi */}
         <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${
           socio?.type === 'tienda' ? 'bg-blue-500/10 text-blue-400' : 
           socio?.type === 'chofer' ? 'bg-green-500/10 text-green-400' : 
@@ -127,18 +161,17 @@ export default function Socios() {
         <div className="flex flex-col items-end gap-2">
             <span className={`text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full border ${
               socio?.status === 'approved' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
-              socio?.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+              (socio?.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20')
             }`}>
-              {socio?.status || 'pending'}
+              {socio?.status || 'PENDIENTE'}
             </span>
             {socio?.fcmToken && <BellRing size={12} className="text-blue-500 animate-pulse" />}
         </div>
       </div>
       <div className="space-y-1 mb-6">
-        <h4 className="font-black text-white text-lg truncate group-hover:text-blue-400 transition-colors uppercase tracking-tight">{socio?.nombre || socio?.nombreTienda}</h4>
-        <p className="text-gray-400 text-xs truncate font-medium">{socio?.telefono || socio?.email}</p>
+        <h4 className="font-black text-white text-lg truncate group-hover:text-blue-400 transition-colors uppercase tracking-tight">{socio?.nombre || socio?.nombreTienda || 'Sin Nombre'}</h4>
+        <p className="text-gray-400 text-xs truncate font-medium">{socio?.telefono || socio?.email || 'Datos Incompletos'}</p>
         
-        {/* MEJORA: Visualización rápida de la placa para Taxis */}
         {socio?.type === 'taxi' && (
           <p className="text-[10px] text-gray-500 uppercase font-black mt-2 bg-gray-900 inline-block px-2 py-1 rounded-md">
             Placa: <span className="text-white">{socio?.placa || 'N/A'}</span>
@@ -244,7 +277,7 @@ export default function Socios() {
           </table>
         </div>
       ) : (
-        /* --- VISTA DE AUDITORÍA (TIENDAS, CHOFERES Y TAXIS) --- */
+        /* --- VISTA DE AUDITORÍA CON FILTRO ROBUSTO --- */
         <div className="space-y-12">
           <section>
             <div className="flex items-center gap-3 mb-6 text-blue-400">
@@ -252,7 +285,7 @@ export default function Socios() {
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Aliados Comerciales</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(socios?.tiendas ?? []).filter(s => filtro === 'all' ? true : s?.status === 'pending').map(renderSocioCard)}
+              {(socios?.tiendas ?? []).filter(s => filtro === 'all' ? true : esPendiente(s?.status)).map(renderSocioCard)}
             </div>
           </section>
 
@@ -262,21 +295,20 @@ export default function Socios() {
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Flota Delivery</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(socios?.choferes ?? []).filter(s => filtro === 'all' ? true : s?.status === 'pending').map(renderSocioCard)}
+              {(socios?.choferes ?? []).filter(s => filtro === 'all' ? true : esPendiente(s?.status)).map(renderSocioCard)}
             </div>
           </section>
 
-          {/* MEJORA: NUEVA SECCIÓN DE TAXIS UBER */}
           <section>
             <div className="flex items-center gap-3 mb-6 text-yellow-400">
               <CarFront size={20} />
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Línea de Taxis (Uber)</h3>
             </div>
-            {(socios?.taxis ?? []).filter(s => filtro === 'all' ? true : s?.status === 'pending').length === 0 ? (
+            {(socios?.taxis ?? []).filter(s => filtro === 'all' ? true : esPendiente(s?.status)).length === 0 ? (
               <p className="text-gray-500 font-bold uppercase text-xs">No hay solicitudes de taxis pendientes.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(socios?.taxis ?? []).filter(s => filtro === 'all' ? true : s?.status === 'pending').map(renderSocioCard)}
+                {(socios?.taxis ?? []).filter(s => filtro === 'all' ? true : esPendiente(s?.status)).map(renderSocioCard)}
               </div>
             )}
           </section>
@@ -293,15 +325,14 @@ export default function Socios() {
                       <ShieldCheck size={28}/>
                     </div>
                     <div>
-                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{modalData?.nombre || modalData?.nombreTienda}</h3>
-                        <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">{modalData?.type} • {modalData?.email}</p>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{modalData?.nombre || modalData?.nombreTienda || 'Socio Nuevo'}</h3>
+                        <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">{modalData?.type} • {modalData?.email || 'Sin Correo'}</p>
                     </div>
                 </div>
                 <button onClick={cerrarModal} className="p-2 bg-gray-900 rounded-full text-gray-500 hover:text-white transition-colors"><X size={24}/></button>
             </div>
 
             <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Panel Izquierdo: Visor Fotográfico */}
                 <div className="p-8 space-y-6 flex flex-col h-full">
                     <div className="flex justify-between items-center text-xs font-black text-blue-500 uppercase tracking-widest">
                         <span className="flex items-center gap-2"><Camera size={14}/> Evidencia Fotográfica</span>
@@ -314,12 +345,17 @@ export default function Socios() {
                     <div className="flex-1 bg-gray-900 rounded-3xl overflow-auto flex items-center justify-center border border-gray-700 shadow-inner relative">
                         <div className="transition-transform duration-300" style={{ transform: `rotate(${rotacion}deg) scale(${zoom})` }}>
                             {modalData?.type === 'tienda' && (
-                                <div className="space-y-8 p-4"><img src={modalData?.rifUrl} alt="RIF" className="rounded-lg"/><img src={modalData?.fachadaUrl} alt="Fachada" className="rounded-lg"/></div>
+                                <div className="space-y-8 p-4">
+                                  {modalData?.rifUrl ? <img src={modalData.rifUrl} alt="RIF" className="rounded-lg max-w-full"/> : <p className="text-gray-500">Sin RIF</p>}
+                                  {modalData?.fachadaUrl && <img src={modalData.fachadaUrl} alt="Fachada" className="rounded-lg max-w-full"/>}
+                                </div>
                             )}
                             {modalData?.type === 'chofer' && (
-                                <div className="space-y-8 p-4"><img src={modalData?.licenciaUrl} alt="Licencia" className="rounded-lg"/><img src={modalData?.cedulaUrl} alt="Cédula" className="rounded-lg"/></div>
+                                <div className="space-y-8 p-4">
+                                  {modalData?.licenciaUrl ? <img src={modalData.licenciaUrl} alt="Licencia" className="rounded-lg max-w-full"/> : <p className="text-gray-500">Sin Licencia</p>}
+                                  {modalData?.cedulaUrl && <img src={modalData.cedulaUrl} alt="Cédula" className="rounded-lg max-w-full"/>}
+                                </div>
                             )}
-                            {/* MEJORA: Layout tipo grilla vertical para los 4 documentos del Taxi */}
                             {modalData?.type === 'taxi' && (
                                 <div className="space-y-8 p-4 max-w-md text-center mx-auto">
                                   <div className="space-y-2"><p className="text-gray-500 font-bold text-[10px] uppercase tracking-widest">Vehículo</p><img src={modalData?.fotoVehiculoUrl} alt="Vehículo" className="rounded-lg border border-gray-700 w-full shadow-lg"/></div>
@@ -332,7 +368,6 @@ export default function Socios() {
                     </div>
                 </div>
 
-                {/* Panel Derecho: Datos y Acciones */}
                 <div className="p-8 bg-gray-900/30 flex flex-col justify-between border-l border-gray-700">
                     <div className="space-y-8">
                         <div>
@@ -350,7 +385,6 @@ export default function Socios() {
                                   <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700/50"><span className="text-gray-500 block text-[9px] font-black uppercase mb-1">Placa</span><span className="text-white font-bold uppercase">{modalData?.placa || 'N/A'}</span></div>
                                 )}
                                 
-                                {/* MEJORA: Datos exclusivos y obligatorios del Taxi */}
                                 {modalData?.type === 'taxi' && (
                                   <>
                                     <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700/50">
